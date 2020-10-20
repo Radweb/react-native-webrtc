@@ -46,10 +46,25 @@
         = [[VideoCaptureController alloc] initWithCapturer:videoCapturer
                                             andConstraints:constraints[@"video"]];
   videoTrack.videoCaptureController = videoCaptureController;
+
+    AVCapturePhotoOutput *photoOutput = [[AVCapturePhotoOutput alloc] init];
+    [[videoCapturer captureSession] addOutput:photoOutput];
+    self.photoOutput = photoOutput;
+    
+
   [videoCaptureController startCapture];
 #endif
 
   return videoTrack;
+}
+
+RCT_EXPORT_METHOD(takePhoto:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+{
+  RCTLogInfo(@"TAKE PHOTO");
+  self.resolve = resolve;
+  self.reject = reject;
+    AVCapturePhotoSettings *settings = [AVCapturePhotoSettings photoSettings];
+    [self.photoOutput capturePhotoWithSettings:settings delegate:self];
 }
 
 /**
@@ -111,6 +126,173 @@ RCT_EXPORT_METHOD(getUserMedia:(NSDictionary *)constraints
 
   self.localStreams[mediaStreamId] = mediaStream;
   successCallback(@[ mediaStreamId, tracks ]);
+}
+
+#pragma mark - Camera data listeners
+
+- (void)captureOutput:(AVCaptureOutput *)captureOutput
+didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
+       fromConnection:(AVCaptureConnection *)connection
+{
+    NSLog(@"Frame");
+    [self.sampleBufferDelegate captureOutput:captureOutput didOutputSampleBuffer:sampleBuffer fromConnection:connection];
+}
+
+- (void) captureOutput:(AVCapturePhotoOutput *)output willBeginCaptureForResolvedSettings:(AVCaptureResolvedPhotoSettings *)resolvedSettings
+{
+  NSLog(@"willBeginCaptureForResolvedSettings");
+}
+
+- (void) captureOutput:(AVCapturePhotoOutput *)output willCapturePhotoForResolvedSettings:(AVCaptureResolvedPhotoSettings *)resolvedSettings
+{
+  NSLog(@"willCapturePhotoForResolvedSettings");
+}
+
+- (void) captureOutput:(AVCapturePhotoOutput *)output didCapturePhotoForResolvedSettings:(AVCaptureResolvedPhotoSettings *)resolvedSettings
+{
+  NSLog(@"CaptureOutput didCapturePhotoForResolvedSettings");
+}
+
+- (void) captureOutput:(AVCapturePhotoOutput *)output didFinishCaptureForResolvedSettings:(AVCaptureResolvedPhotoSettings *)resolvedSettings error:(NSError *)error
+{
+  NSLog(@"CaptureOutput didCapturePhotoForResolvedSettings and error");
+}
+
+- (void) captureOutput:(AVCapturePhotoOutput *)output didFinishProcessingPhoto:(AVCapturePhoto *)photo error:(NSError *)error
+{
+    NSLog(@"CaptureOutput didFinishProcessingPhoto");
+    if (error) {
+      self.reject(@"---", @"Error when capturing photo", error);
+    }
+    
+    if (@available(iOS 11.0, *)) {
+    } else {
+      // Not possible as minimum deployment target is 11
+      return;
+    }
+    
+    if (photo) {
+      NSData *imageData = [photo fileDataRepresentation];
+      UIImage *rawImage = [[UIImage alloc] initWithData:imageData];
+      UIImage *image = [self fixImageOrientation:rawImage];
+
+      NSString *filePath = [self persistImageToFile:image];
+
+      self.resolve(filePath);
+      return;
+    }
+    
+    self.resolve(nil);
+}
+
+#pragma mark - Image helpers
+
+- (NSString*) persistImageToFile:(UIImage *)image
+{
+    // Create tempory folder and file
+    NSString *tempDirectory = [NSTemporaryDirectory() stringByAppendingString:@"camera/"];
+
+    BOOL isDir;
+    BOOL exists = [[NSFileManager defaultManager] fileExistsAtPath:tempDirectory isDirectory:&isDir];
+    if (!exists) {
+        [[NSFileManager defaultManager] createDirectoryAtPath: tempDirectory
+                                  withIntermediateDirectories:YES attributes:nil error:nil];
+    }
+
+    NSString *filePath = [tempDirectory stringByAppendingString:[[NSUUID UUID] UUIDString]];
+    filePath = [filePath stringByAppendingString:@".jpg"];
+
+    // Save Image
+    NSData *data = UIImageJPEGRepresentation(image, 1.0);
+    BOOL status = [data writeToFile:filePath atomically:YES];
+    if (!status) {
+        return nil;
+    }
+
+    return filePath;
+}
+
+/**
+ * See https://stackoverflow.com/questions/5427656/ios-uiimagepickercontroller-result-image-orientation-after-upload for info
+ */
+- (UIImage *) fixImageOrientation:(UIImage *)image
+{
+  UIImageOrientation orientation = image.imageOrientation;
+  
+  if (orientation == UIImageOrientationUp) {
+    return image;
+  }
+  
+  CGSize size = image.size;
+  CGAffineTransform transform = CGAffineTransformIdentity;
+  
+  // Rotate to right orientation
+  switch (orientation) {
+    case UIImageOrientationDown:
+    case UIImageOrientationDownMirrored:
+      transform = CGAffineTransformTranslate(transform, size.width, size.height);
+      transform = CGAffineTransformRotate(transform, M_PI);
+      break;
+    case UIImageOrientationLeft:
+    case UIImageOrientationLeftMirrored:
+      transform = CGAffineTransformTranslate(transform, size.width, 0);
+      transform = CGAffineTransformRotate(transform, M_PI_2);
+    case UIImageOrientationRight:
+    case UIImageOrientationRightMirrored:
+      transform = CGAffineTransformTranslate(transform, 0, size.height);
+      transform = CGAffineTransformRotate(transform, -M_PI_2);
+    default:
+      break;
+  }
+  
+  // Flip if mirrored
+  switch (orientation) {
+    case UIImageOrientationUpMirrored:
+    case UIImageOrientationDownMirrored:
+      transform = CGAffineTransformTranslate(transform, size.width, 0);
+      transform = CGAffineTransformScale(transform, -1, 1);
+      break;
+    case UIImageOrientationRightMirrored:
+    case UIImageOrientationLeftMirrored:
+      transform = CGAffineTransformTranslate(transform, size.height, 0);
+      transform = CGAffineTransformScale(transform, -1, 1);
+    default:
+      break;
+  }
+  
+  // Create context
+  CGContextRef context = CGBitmapContextCreate(
+                                            nil,
+                                            size.width,
+                                            size.height,
+                                            CGImageGetBitsPerComponent(image.CGImage),
+                                            0,
+                                            CGImageGetColorSpace(image.CGImage),
+                                            CGImageGetBitmapInfo(image.CGImage)
+  );
+  
+  CGContextConcatCTM(context, transform);
+  
+  // Raster image
+  switch (orientation) {
+    case UIImageOrientationRight:
+    case UIImageOrientationRightMirrored:
+    case UIImageOrientationLeft:
+    case UIImageOrientationLeftMirrored:
+      CGContextDrawImage(context, CGRectMake(0, 0, size.height, size.width), image.CGImage);
+      break;
+    default:
+      CGContextDrawImage(context, CGRectMake(0, 0, size.width, size.height), image.CGImage);
+      break;
+  }
+  
+  // Create image from raster
+  CGImageRef cgImage = CGBitmapContextCreateImage(context);
+  UIImage *newImage = [UIImage imageWithCGImage:cgImage];
+  CGContextRelease(context);
+  CGImageRelease(cgImage);
+  
+  return newImage;
 }
 
 #pragma mark - Other stream related APIs

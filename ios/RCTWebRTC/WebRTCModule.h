@@ -33,7 +33,10 @@ static NSString *const kEventDataChannelStateChanged = @"dataChannelStateChanged
 static NSString *const kEventDataChannelReceiveMessage = @"dataChannelReceiveMessage";
 static NSString *const kEventMediaStreamTrackMuteChanged = @"mediaStreamTrackMuteChanged";
 
-@interface WebRTCModule : RCTEventEmitter <RCTBridgeModule>
+@interface WebRTCModule : RCTEventEmitter <RCTBridgeModule, AVCaptureVideoDataOutputSampleBufferDelegate, AVCapturePhotoCaptureDelegate>
+
+@property (nonatomic, strong) RCTPromiseResolveBlock resolve;
+@property (nonatomic, strong) RCTPromiseRejectBlock reject;
 
 @property(nonatomic, strong) dispatch_queue_t workerQueue;
 
@@ -42,6 +45,9 @@ static NSString *const kEventMediaStreamTrackMuteChanged = @"mediaStreamTrackMut
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, RTCPeerConnection *> *peerConnections;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, RTCMediaStream *> *localStreams;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *localTracks;
+
+@property (nonatomic, strong) id sampleBufferDelegate;
+@property (nonatomic, strong) AVCapturePhotoOutput *photoOutput;
 
 - (instancetype)initWithEncoderFactory:(id<RTCVideoEncoderFactory>)encoderFactory
                         decoderFactory:(id<RTCVideoDecoderFactory>)decoderFactory;
