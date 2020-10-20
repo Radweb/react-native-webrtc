@@ -46,17 +46,6 @@
         = [[VideoCaptureController alloc] initWithCapturer:videoCapturer
                                             andConstraints:constraints[@"video"]];
   videoTrack.videoCaptureController = videoCaptureController;
-    
-//    AVCaptureVideoDataOutput *dataOutput = [[AVCaptureVideoDataOutput alloc] init];
-//    for (AVCaptureOutput *output in [[videoCapturer captureSession] outputs]) {
-//        if ([output class] == [AVCaptureVideoDataOutput class]) {
-//            dispatch_queue_t queue = dispatch_queue_create("framesQueue", NULL);
-//            self.sampleBufferDelegate = [((AVCaptureVideoDataOutput *) output) sampleBufferDelegate];
-//            [((AVCaptureVideoDataOutput *) output) setSampleBufferDelegate:self queue:queue];
-//        }
-//    }
-//    [[videoCapturer captureSession] addOutput:dataOutput];
-    
 
     AVCapturePhotoOutput *photoOutput = [[AVCapturePhotoOutput alloc] init];
     [[videoCapturer captureSession] addOutput:photoOutput];
