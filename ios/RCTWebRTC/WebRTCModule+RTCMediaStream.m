@@ -51,6 +51,7 @@
     [[videoCapturer captureSession] addOutput:photoOutput];
     self.photoOutput = photoOutput;
     
+    [[videoCapturer captureSession] setSessionPreset:AVCaptureSessionPresetPhoto];
     
     [videoCaptureController startCapture];
 #endif
