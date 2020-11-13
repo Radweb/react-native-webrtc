@@ -51,6 +51,7 @@
     [[videoCapturer captureSession] addOutput:photoOutput];
     self.photoOutput = photoOutput;
     
+    [[videoCapturer captureSession] setSessionPreset:AVCaptureSessionPresetPhoto];
     
     [videoCaptureController startCapture];
 #endif
@@ -62,7 +63,10 @@ RCT_EXPORT_METHOD(takePhoto:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRe
 {
     self.resolve = resolve;
     self.reject = reject;
-    AVCapturePhotoSettings *settings = [AVCapturePhotoSettings photoSettings];
+    AVCapturePhotoSettings *settings = [AVCapturePhotoSettings photoSettingsWithFormat:@{AVVideoCodecKey : AVVideoCodecTypeJPEG}];
+    if (@available(iOS 13.0, *)) {
+        [settings setPhotoQualityPrioritization:AVCapturePhotoQualityPrioritizationBalanced];
+    }
     [self.photoOutput capturePhotoWithSettings:settings delegate:self];
 }
 
@@ -128,13 +132,6 @@ RCT_EXPORT_METHOD(getUserMedia:(NSDictionary *)constraints
 }
 
 #pragma mark - Camera data listeners
-
-- (void)captureOutput:(AVCaptureOutput *)captureOutput
-didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
-       fromConnection:(AVCaptureConnection *)connection
-{
-    [self.sampleBufferDelegate captureOutput:captureOutput didOutputSampleBuffer:sampleBuffer fromConnection:connection];
-}
 
 - (void) captureOutput:(AVCapturePhotoOutput *)output willBeginCaptureForResolvedSettings:(AVCaptureResolvedPhotoSettings *)resolvedSettings
 {

@@ -20,17 +20,17 @@
     if (self) {
         _capturer = capturer;
         _running = NO;
-
+        
         // Default to the front camera.
         _usingFrontCamera = YES;
-
+        
         _deviceId = constraints[@"deviceId"];
         _width = [constraints[@"width"] intValue];
         _height = [constraints[@"height"] intValue];
         _fps = [constraints[@"frameRate"] intValue];
-
+        
         id facingMode = constraints[@"facingMode"];
-
+        
         if (facingMode && [facingMode isKindOfClass:[NSString class]]) {
             AVCaptureDevicePosition position;
             if ([facingMode isEqualToString:@"environment"]) {
@@ -42,11 +42,11 @@
                 // to the front camera.
                 position = AVCaptureDevicePositionFront;
             }
-
+            
             _usingFrontCamera = position == AVCaptureDevicePositionFront;
         }
     }
-
+    
     return self;
 }
 
@@ -57,33 +57,48 @@
     }
     if (!device) {
         AVCaptureDevicePosition position
-            = _usingFrontCamera
-                ? AVCaptureDevicePositionFront
-                : AVCaptureDevicePositionBack;
+        = _usingFrontCamera
+        ? AVCaptureDevicePositionFront
+        : AVCaptureDevicePositionBack;
         device = [self findDeviceForPosition:position];
     }
-
+    
     if (!device) {
         RCTLogWarn(@"[VideoCaptureController] No capture devices found!");
-
+        
         return;
     }
-
+    
     AVCaptureDeviceFormat *format
-        = [self selectFormatForDevice:device
-                      withTargetWidth:_width
-                     withTargetHeight:_height];
+    = [self selectFormatForDevice:device
+                  withTargetWidth:_width
+                 withTargetHeight:_height];
     if (!format) {
         RCTLogWarn(@"[VideoCaptureController] No valid formats for device %@", device);
-
+        
         return;
     }
-
+    
     RCTLog(@"[VideoCaptureController] Capture will start");
-
+    
+    NSError *error = nil;
+    if ([device lockForConfiguration:&error])
+    {
+        if ([device isFocusModeSupported:AVCaptureFocusModeContinuousAutoFocus])
+        {
+            [device setFocusMode:AVCaptureFocusModeContinuousAutoFocus];
+        }
+        if ([device isExposureModeSupported:AVCaptureExposureModeContinuousAutoExposure])
+        {
+            [device setExposureMode:AVCaptureExposureModeContinuousAutoExposure];
+        }
+        [device setSubjectAreaChangeMonitoringEnabled:YES];
+        [device unlockForConfiguration];
+    }
+    
     // Starting the capture happens on another thread. Wait for it.
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
-
+    
     [_capturer startCaptureWithDevice:device format:format fps:_fps completionHandler:^(NSError *err) {
         if (err) {
             RCTLogError(@"[VideoCaptureController] Error starting capture: %@", err);
@@ -93,31 +108,31 @@
         }
         dispatch_semaphore_signal(semaphore);
     }];
-
+    
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
 }
 
 -(void)stopCapture {
     if (!_running)
         return;
-
+    
     RCTLog(@"[VideoCaptureController] Capture will stop");
     // Stopping the capture happens on another thread. Wait for it.
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
-
+    
     [_capturer stopCaptureWithCompletionHandler:^{
         RCTLog(@"[VideoCaptureController] Capture stopped");
         self->_running = NO;
         dispatch_semaphore_signal(semaphore);
     }];
-
+    
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
 }
 
 -(void)switchCamera {
     _usingFrontCamera = !_usingFrontCamera;
     _deviceId = NULL;
-
+    
     [self startCapture];
 }
 
@@ -130,7 +145,7 @@
             return device;
         }
     }
-
+    
     return [captureDevices firstObject];
 }
 
@@ -141,7 +156,7 @@
     [RTCCameraVideoCapturer supportedFormatsForDevice:device];
     AVCaptureDeviceFormat *selectedFormat = nil;
     int currentDiff = INT_MAX;
-
+    
     for (AVCaptureDeviceFormat *format in formats) {
         CMVideoDimensions dimension = CMVideoFormatDescriptionGetDimensions(format.formatDescription);
         FourCharCode pixelFormat = CMFormatDescriptionGetMediaSubType(format.formatDescription);
@@ -153,7 +168,7 @@
             selectedFormat = format;
         }
     }
-
+    
     return selectedFormat;
 }
 
