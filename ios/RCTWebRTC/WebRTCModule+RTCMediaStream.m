@@ -62,7 +62,10 @@ RCT_EXPORT_METHOD(takePhoto:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRe
 {
     self.resolve = resolve;
     self.reject = reject;
-    AVCapturePhotoSettings *settings = [AVCapturePhotoSettings photoSettings];
+    AVCapturePhotoSettings *settings = [AVCapturePhotoSettings photoSettingsWithFormat:@{AVVideoCodecKey : AVVideoCodecTypeJPEG}];
+    if (@available(iOS 13.0, *)) {
+        [settings setPhotoQualityPrioritization:AVCapturePhotoQualityPrioritizationBalanced];
+    }
     [self.photoOutput capturePhotoWithSettings:settings delegate:self];
 }
 
