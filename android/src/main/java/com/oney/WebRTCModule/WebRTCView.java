@@ -9,8 +9,14 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.util.Log;
 
+import com.facebook.react.bridge.Arguments;
+import com.facebook.react.bridge.Callback;
+import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactContext;
+import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.WritableArray;
 
+import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -53,6 +59,8 @@ public class WebRTCView extends ViewGroup {
     private static final Method IS_IN_LAYOUT;
 
     private static final String TAG = WebRTCModule.TAG;
+
+    private static WebRTCView instance;
 
     static {
         // IS_IN_LAYOUT
@@ -175,6 +183,8 @@ public class WebRTCView extends ViewGroup {
         addView(surfaceViewRenderer);
 
         this.videoFrameCapturer = new VideoFrameCapturer();
+
+        instance  = this;
 
         setMirror(false);
         setScalingType(DEFAULT_SCALING_TYPE);
@@ -624,4 +634,20 @@ public class WebRTCView extends ViewGroup {
             rendererAttached = true;
         }
     }
+
+    public void takePhoto(Promise promise) {
+        try {
+            File file = this.videoFrameCapturer.saveLastFrameToFile(this.getContext());
+            Log.i("FILE", file.getAbsolutePath());
+            String filePath = file.getAbsolutePath();
+            promise.resolve(filePath);
+        } catch (Exception e) {
+            promise.reject(e);
+        }
+    }
+
+    public static WebRTCView getInstance() {
+        return instance;
+    }
+
 }
