@@ -17,6 +17,7 @@ import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.WritableArray;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -182,7 +183,7 @@ public class WebRTCView extends ViewGroup {
         surfaceViewRenderer = new SurfaceViewRenderer(context);
         addView(surfaceViewRenderer);
 
-        this.videoFrameCapturer = new VideoFrameCapturer();
+        this.videoFrameCapturer = new VideoFrameCapturer(context);
 
         instance  = this;
 
