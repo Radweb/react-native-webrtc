@@ -355,7 +355,7 @@ public class WebRTCView extends ViewGroup {
         boolean flipHorizontalVertical = false;
 
         if (height == 0 || width == 0) {
-            l = t = r = b = 0;
+            left = top = right = bottom = 0;
         } else {
             int frameHeight;
             int frameRotation;
@@ -395,10 +395,7 @@ public class WebRTCView extends ViewGroup {
                     if (frameHeight == 0 || frameWidth == 0) {
                         left = top = right = bottom = 0;
                     } else {
-                        float frameAspectRatio //= (float) Math.min(frameHeight, frameWidth) / (float) Math.max(frameHeight, frameWidth);
-                                = (frameRotation % 180 == 0)
-                                ? frameWidth / (float) frameHeight
-                                : frameHeight / (float) frameWidth;
+                        float frameAspectRatio = (frameRotation % 180 == 0) ? frameWidth / (float) frameHeight : frameHeight / (float) frameWidth;
                         Point frameDisplaySize
                                 = RendererCommon.getDisplaySize(
                                 scalingType,
@@ -413,24 +410,16 @@ public class WebRTCView extends ViewGroup {
                                     height, width);
                         }
 
-                        Log.i("onLayout", String.format("%d %d %d %f %d %d %d %d", frameRotation, frameWidth, frameHeight, frameAspectRatio, width, height, frameDisplaySize.x, frameDisplaySize.y));
-
                         left = (width - frameDisplaySize.x) / 2;
                         top = (height - frameDisplaySize.y) / 2;
                         right = left + frameDisplaySize.x;
                         bottom = top + frameDisplaySize.y;
-//
-//                        if (flipHorizontalVertical) {
-//                            left = (width - frameDisplaySize.y) / 2;
-//                            top = (height - frameDisplaySize.x) / 2;
-//                            right = left + frameDisplaySize.y;
-//                            bottom = top + frameDisplaySize.x;
-//                        }
                     }
                     break;
             }
         }
         surfaceViewRenderer.layout(left, top, right, bottom);
+        // Don't even ask why this works but it does
         if (flipHorizontalVertical) {
             surfaceViewRenderer.setRotation(90);
         } else {
