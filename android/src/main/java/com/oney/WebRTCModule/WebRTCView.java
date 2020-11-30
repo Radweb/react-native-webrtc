@@ -369,7 +369,9 @@ public class WebRTCView extends ViewGroup {
                 scalingType = this.scalingType;
             }
 
-            if (frameRotation == 90 && width > height) {
+            if (Math.abs(frameRotation) % 180 == 90 && width > height) {
+                flipHorizontalVertical = true;
+            } else if (Math.abs(frameRotation) % 180 == 0 && height > width) {
                 flipHorizontalVertical = true;
             }
 
