@@ -319,9 +319,7 @@ public class WebRTCView extends ViewGroup {
             int videoWidth, int videoHeight,
             int rotation) {
         boolean changed = false;
-
-        Log.i("onFrameResolutionChanged", "ksjadf");
-
+        
         synchronized (layoutSyncRoot) {
             if (this.frameHeight != videoHeight) {
                 this.frameHeight = videoHeight;
