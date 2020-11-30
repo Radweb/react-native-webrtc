@@ -318,6 +318,8 @@ public class WebRTCView extends ViewGroup {
             int rotation) {
         boolean changed = false;
 
+        Log.i("onFrameResolutionChanged", "ksjadf");
+
         synchronized (layoutSyncRoot) {
             if (this.frameHeight != videoHeight) {
                 this.frameHeight = videoHeight;
@@ -339,10 +341,18 @@ public class WebRTCView extends ViewGroup {
         }
     }
 
+
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
-        int height = b - t;
-        int width = r - l;
+        int left = l;
+        int right = r;
+        int top = t;
+        int bottom = b;
+
+        int height = bottom - top;
+        int width = right - left;
+
+        boolean flipHorizontalVertical = false;
 
         if (height == 0 || width == 0) {
             l = t = r = b = 0;
@@ -359,15 +369,19 @@ public class WebRTCView extends ViewGroup {
                 scalingType = this.scalingType;
             }
 
+            if (frameRotation == 90 && width > height) {
+                flipHorizontalVertical = true;
+            }
+
             switch (scalingType) {
                 case SCALE_ASPECT_FILL:
                     // Fill this ViewGroup with surfaceViewRenderer and the latter
                     // will take care of filling itself with the video similarly to
                     // the cover value the CSS property object-fit.
-                    r = width;
-                    l = 0;
-                    b = height;
-                    t = 0;
+                    right = width;
+                    left = 0;
+                    bottom = height;
+                    top = 0;
                     break;
                 case SCALE_ASPECT_FIT:
                 default:
@@ -377,9 +391,9 @@ public class WebRTCView extends ViewGroup {
                     // to the cover or contain value of the CSS property object-fit
                     // (which will not matter, eventually).
                     if (frameHeight == 0 || frameWidth == 0) {
-                        l = t = r = b = 0;
+                        left = top = right = bottom = 0;
                     } else {
-                        float frameAspectRatio
+                        float frameAspectRatio //= (float) Math.min(frameHeight, frameWidth) / (float) Math.max(frameHeight, frameWidth);
                                 = (frameRotation % 180 == 0)
                                 ? frameWidth / (float) frameHeight
                                 : frameHeight / (float) frameWidth;
@@ -389,15 +403,37 @@ public class WebRTCView extends ViewGroup {
                                 frameAspectRatio,
                                 width, height);
 
-                        l = (width - frameDisplaySize.x) / 2;
-                        t = (height - frameDisplaySize.y) / 2;
-                        r = l + frameDisplaySize.x;
-                        b = t + frameDisplaySize.y;
+                        if (flipHorizontalVertical) {
+                            frameDisplaySize
+                                    = RendererCommon.getDisplaySize(
+                                    scalingType,
+                                    frameAspectRatio,
+                                    height, width);
+                        }
+
+                        Log.i("onLayout", String.format("%d %d %d %f %d %d %d %d", frameRotation, frameWidth, frameHeight, frameAspectRatio, width, height, frameDisplaySize.x, frameDisplaySize.y));
+
+                        left = (width - frameDisplaySize.x) / 2;
+                        top = (height - frameDisplaySize.y) / 2;
+                        right = left + frameDisplaySize.x;
+                        bottom = top + frameDisplaySize.y;
+//
+//                        if (flipHorizontalVertical) {
+//                            left = (width - frameDisplaySize.y) / 2;
+//                            top = (height - frameDisplaySize.x) / 2;
+//                            right = left + frameDisplaySize.y;
+//                            bottom = top + frameDisplaySize.x;
+//                        }
                     }
                     break;
             }
         }
-        surfaceViewRenderer.layout(l, t, r, b);
+        surfaceViewRenderer.layout(left, top, right, bottom);
+        if (flipHorizontalVertical) {
+            surfaceViewRenderer.setRotation(90);
+        } else {
+            surfaceViewRenderer.setRotation(0);
+        }
     }
 
     /**
