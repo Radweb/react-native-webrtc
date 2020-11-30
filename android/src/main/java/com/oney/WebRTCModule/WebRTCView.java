@@ -4,7 +4,9 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Point;
+
 import androidx.core.view.ViewCompat;
+
 import android.view.View;
 import android.view.ViewGroup;
 import android.util.Log;
@@ -34,10 +36,10 @@ import org.webrtc.VideoTrack;
 public class WebRTCView extends ViewGroup {
     /**
      * The scaling type to be utilized by default.
-     *
+     * <p>
      * The default value is in accord with
      * https://www.w3.org/TR/html5/embedded-content-0.html#the-video-element:
-     *
+     * <p>
      * In the absence of style rules to the contrary, video content should be
      * rendered inside the element's playback area such that the video content
      * is shown centered in the playback area at the largest possible size that
@@ -185,7 +187,7 @@ public class WebRTCView extends ViewGroup {
 
         this.videoFrameCapturer = new VideoFrameCapturer(context);
 
-        instance  = this;
+        instance = this;
 
         setMirror(false);
         setScalingType(DEFAULT_SCALING_TYPE);
@@ -309,9 +311,9 @@ public class WebRTCView extends ViewGroup {
      * Callback fired by {@link #surfaceViewRenderer} when the resolution or
      * rotation of the frame it renders has changed.
      *
-     * @param videoWidth The new width of the rendered video frame.
+     * @param videoWidth  The new width of the rendered video frame.
      * @param videoHeight The new height of the rendered video frame.
-     * @param rotation The new rotation of the rendered video frame.
+     * @param rotation    The new rotation of the rendered video frame.
      */
     private void onFrameResolutionChanged(
             int videoWidth, int videoHeight,
@@ -489,8 +491,8 @@ public class WebRTCView extends ViewGroup {
      * mirror the video represented by {@link #videoTrack} during its rendering.
      *
      * @param mirror If this {@code WebRTCView} is to mirror the video
-     * represented by {@code videoTrack} during its rendering, {@code true};
-     * otherwise, {@code false}.
+     *               represented by {@code videoTrack} during its rendering, {@code true};
+     *               otherwise, {@code false}.
      */
     public void setMirror(boolean mirror) {
         if (this.mirror != mirror) {
@@ -509,8 +511,8 @@ public class WebRTCView extends ViewGroup {
      * resembles the CSS style {@code object-fit}.
      *
      * @param objectFit For details, refer to the documentation of the
-     * {@code objectFit} property of the JavaScript counterpart of
-     * {@code WebRTCView} i.e. {@code RTCView}.
+     *                  {@code objectFit} property of the JavaScript counterpart of
+     *                  {@code WebRTCView} i.e. {@code RTCView}.
      */
     public void setObjectFit(String objectFit) {
         ScalingType scalingType
@@ -540,7 +542,7 @@ public class WebRTCView extends ViewGroup {
      * specified {@code mediaStream}.
      *
      * @param streamURL The URL of the {@code MediaStream} to be rendered by
-     * this {@code WebRTCView} or {@code null}.
+     *                  this {@code WebRTCView} or {@code null}.
      */
     void setStreamURL(String streamURL) {
         // Is the value of this.streamURL really changing?
@@ -573,7 +575,7 @@ public class WebRTCView extends ViewGroup {
      * Sets the {@code VideoTrack} to be rendered by this {@code WebRTCView}.
      *
      * @param videoTrack The {@code VideoTrack} to be rendered by this
-     * {@code WebRTCView} or {@code null}.
+     *                   {@code WebRTCView} or {@code null}.
      */
     private void setVideoTrack(VideoTrack videoTrack) {
         VideoTrack oldVideoTrack = this.videoTrack;
@@ -666,7 +668,6 @@ public class WebRTCView extends ViewGroup {
     public void takePhoto(Promise promise) {
         try {
             File file = this.videoFrameCapturer.saveLastFrameToFile(this.getContext());
-            Log.i("FILE", file.getAbsolutePath());
             String filePath = file.getAbsolutePath();
             promise.resolve(filePath);
         } catch (Exception e) {

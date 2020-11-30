@@ -153,8 +153,7 @@ public class VideoFrameCapturer implements VideoSink {
         }
     }
 
-    public int getScreenOrientation(Context context)
-    {
+    public int getScreenOrientation(Context context) {
         return ((WindowManager) context.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay().getRotation();
     }
 }
