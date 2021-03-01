@@ -88,7 +88,7 @@ public class VideoFrameCapturer implements VideoSink {
         synchronized (this) {
             this.captureNextFrame = false;
 
-            if (this.frameReturnPromise == null) {
+            if (this.frameReturnPromise == null || this.context == null) {
                 return;
             }
 
