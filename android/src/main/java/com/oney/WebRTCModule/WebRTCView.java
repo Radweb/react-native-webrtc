@@ -319,7 +319,7 @@ public class WebRTCView extends ViewGroup {
             int videoWidth, int videoHeight,
             int rotation) {
         boolean changed = false;
-        
+
         synchronized (layoutSyncRoot) {
             if (this.frameHeight != videoHeight) {
                 this.frameHeight = videoHeight;
@@ -665,9 +665,7 @@ public class WebRTCView extends ViewGroup {
 
     public void takePhoto(Promise promise) {
         try {
-            File file = this.videoFrameCapturer.saveLastFrameToFile(this.getContext());
-            String filePath = file.getAbsolutePath();
-            promise.resolve(filePath);
+            this.videoFrameCapturer.saveLastFrameToFile(this.getContext(), promise);
         } catch (Exception e) {
             promise.reject(e);
         }

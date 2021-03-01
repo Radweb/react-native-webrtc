@@ -1,8 +1,6 @@
 package com.oney.WebRTCModule;
 
-import android.app.Activity;
 import android.content.Context;
-import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
@@ -11,30 +9,20 @@ import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.hardware.SensorManager;
 import android.util.Log;
-import android.view.Display;
 import android.view.OrientationEventListener;
 import android.view.WindowManager;
 
-import com.facebook.common.logging.FLog;
-import com.facebook.react.bridge.Arguments;
-import com.facebook.react.bridge.ReactContext;
-import com.facebook.react.bridge.WritableMap;
-import com.facebook.react.common.ReactConstants;
-import com.facebook.react.modules.core.DeviceEventManagerModule;
+import com.facebook.react.bridge.Promise;
 
-import org.webrtc.JavaI420Buffer;
 import org.webrtc.VideoFrame;
 import org.webrtc.VideoSink;
-import org.webrtc.YuvConverter;
 import org.webrtc.YuvHelper;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.nio.ByteBuffer;
 import java.util.UUID;
 
@@ -44,6 +32,9 @@ public class VideoFrameCapturer implements VideoSink {
     private int lastFrameRotation = 0;
     private OrientationEventListener orientationEventListener;
     private int deviceOrientation = 0;
+    private Promise frameReturnPromise;
+    private Context context;
+    private boolean captureNextFrame = false;
 
     public VideoFrameCapturer(Context context) {
         this.orientationEventListener = new OrientationEventListener(context, SensorManager.SENSOR_DELAY_UI) {
@@ -73,47 +64,74 @@ public class VideoFrameCapturer implements VideoSink {
     @Override
     public void onFrame(VideoFrame frame) {
         synchronized (this) {
-            this.i420Buffer = frame.getBuffer().toI420();
-            this.lastFrameRotation = frame.getRotation();
+            if (this.captureNextFrame) {
+                this.i420Buffer = frame.getBuffer().toI420();
+                this.lastFrameRotation = frame.getRotation();
+                this.onFrameCaptured();
+            }
         }
     }
 
-    public File saveLastFrameToFile(Context context) throws IOException {
+    public void saveLastFrameToFile(Context context, Promise frameReturnPromise) {
         synchronized (this) {
-            if (this.i420Buffer == null) {
-                throw new IOException("Frame does not exist");
+            this.context = context;
+            this.frameReturnPromise = frameReturnPromise;
+            this.captureNextFrame = true;
+        }
+    }
+
+    private void onFrameCaptured() {
+        synchronized (this) {
+            this.captureNextFrame = false;
+
+            if (this.frameReturnPromise == null) {
+                return;
             }
 
-            int width = this.i420Buffer.getWidth();
-            int height = this.i420Buffer.getHeight();
+            try {
+                if (this.i420Buffer == null) {
+                    this.frameReturnPromise.reject(new IOException("Frame does not exist"));
+                    return;
+                }
 
-            YuvImage yuvImage = new YuvImage(this.createNV21Data(this.i420Buffer), ImageFormat.NV21, width, height, null);
-            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-            yuvImage.compressToJpeg(new Rect(0, 0, width, height), 90, byteArrayOutputStream);
+                int width = this.i420Buffer.getWidth();
+                int height = this.i420Buffer.getHeight();
 
-            String originalUuid = UUID.randomUUID().toString() + ".jpg";
-            FileOutputStream fileOutputStream = context.openFileOutput(originalUuid, Context.MODE_PRIVATE);
-            byteArrayOutputStream.writeTo(fileOutputStream);
+                YuvImage yuvImage = new YuvImage(this.createNV21Data(this.i420Buffer), ImageFormat.NV21, width, height, null);
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                yuvImage.compressToJpeg(new Rect(0, 0, width, height), 90, byteArrayOutputStream);
 
-            byteArrayOutputStream.flush();
-            byteArrayOutputStream.close();
-            fileOutputStream.flush();
-            fileOutputStream.close();
+                String originalUuid = UUID.randomUUID().toString() + ".jpg";
+                FileOutputStream fileOutputStream = this.context.openFileOutput(originalUuid, Context.MODE_PRIVATE);
+                byteArrayOutputStream.writeTo(fileOutputStream);
 
-            String rotatedUuid = UUID.randomUUID().toString() + ".jpg";
-            File rotatedFile = context.getFileStreamPath(rotatedUuid);
+                byteArrayOutputStream.flush();
+                byteArrayOutputStream.close();
+                fileOutputStream.flush();
+                fileOutputStream.close();
 
-            FileInputStream rotationInputStream = context.openFileInput(originalUuid);
-            FileOutputStream rotationOutputStream = context.openFileOutput(rotatedUuid, Context.MODE_PRIVATE);
-            this.rotateImage(rotationInputStream, rotationOutputStream, this.lastFrameRotation);
+                String rotatedUuid = UUID.randomUUID().toString() + ".jpg";
+                File rotatedFile = this.context.getFileStreamPath(rotatedUuid);
 
-            rotationInputStream.close();
-            rotationOutputStream.flush();
-            rotationOutputStream.close();
+                FileInputStream rotationInputStream = this.context.openFileInput(originalUuid);
+                FileOutputStream rotationOutputStream = this.context.openFileOutput(rotatedUuid, Context.MODE_PRIVATE);
+                this.rotateImage(rotationInputStream, rotationOutputStream, this.lastFrameRotation);
 
-            context.deleteFile(originalUuid);
+                rotationInputStream.close();
+                rotationOutputStream.flush();
+                rotationOutputStream.close();
 
-            return rotatedFile;
+                this.context.deleteFile(originalUuid);
+
+                String outputFilePath = rotatedFile.getAbsolutePath();
+
+                this.frameReturnPromise.resolve(outputFilePath);
+            } catch (IOException e) {
+                this.frameReturnPromise.reject(e);
+            } finally {
+                this.context = null;
+                this.frameReturnPromise = null;
+            }
         }
     }
 
