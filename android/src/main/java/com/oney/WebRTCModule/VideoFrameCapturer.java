@@ -72,8 +72,12 @@ public class VideoFrameCapturer implements VideoSink {
         }
     }
 
-    public void saveLastFrameToFile(Context context, Promise frameReturnPromise) {
+    public void saveLastFrameToFile(Context context, Promise frameReturnPromise) throws Exception {
         synchronized (this) {
+            if (this.captureNextFrame) {
+                throw new Exception("Already capturing frame");
+            }
+
             this.context = context;
             this.frameReturnPromise = frameReturnPromise;
             this.captureNextFrame = true;
