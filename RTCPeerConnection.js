@@ -103,21 +103,21 @@ export default class RTCPeerConnection extends EventTarget(PEER_CONNECTION_EVENT
   }
 
   addStream(stream: MediaStream) {
-      const index = this._localStreams.indexOf(stream);
-      if (index !== -1) {
-          return;
-      }
-      WebRTCModule.peerConnectionAddStream(stream._reactTag, this._peerConnectionId);
-      this._localStreams.push(stream);
+    const index = this._localStreams.indexOf(stream);
+    if (index !== -1) {
+      return;
+    }
+    WebRTCModule.peerConnectionAddStream(stream._reactTag, this._peerConnectionId);
+    this._localStreams.push(stream);
   }
 
   removeStream(stream: MediaStream) {
-      const index = this._localStreams.indexOf(stream);
-      if (index === -1) {
-          return;
-      }
-      this._localStreams.splice(index, 1);
-      WebRTCModule.peerConnectionRemoveStream(stream._reactTag, this._peerConnectionId);
+    const index = this._localStreams.indexOf(stream);
+    if (index === -1) {
+      return;
+    }
+    this._localStreams.splice(index, 1);
+    WebRTCModule.peerConnectionRemoveStream(stream._reactTag, this._peerConnectionId);
   }
 
   createOffer(options) {
@@ -166,7 +166,7 @@ export default class RTCPeerConnection extends EventTarget(PEER_CONNECTION_EVENT
           } else {
             reject(data);
           }
-      });
+        });
     });
   }
 
@@ -182,7 +182,7 @@ export default class RTCPeerConnection extends EventTarget(PEER_CONNECTION_EVENT
           } else {
             reject(data);
           }
-      });
+        });
     });
   }
 
@@ -198,38 +198,26 @@ export default class RTCPeerConnection extends EventTarget(PEER_CONNECTION_EVENT
             // XXX: This should be OperationError
             reject(new Error('Failed to add ICE candidate'));
           }
-      });
+        });
     });
   }
 
-  getStats(track) {
-    // NOTE: This returns a Promise but the format of the results is still
-    // the "legacy" one. The native side (in Oobj-C) doesn't yet support the
-    // new format: https://bugs.chromium.org/p/webrtc/issues/detail?id=6872
-    return new Promise((resolve, reject) => {
-      WebRTCModule.peerConnectionGetStats(
-        (track && track.id) || '',
-        this._peerConnectionId,
-        (success, data) => {
-          if (success) {
-            // On both Android and iOS it is faster to construct a single
-            // JSON string representing the array of StatsReports and have it
-            // pass through the React Native bridge rather than the array of
-            // StatsReports. While the implementations do try to be faster in
-            // general, the stress is on being faster to pass through the React
-            // Native bridge which is a bottleneck that tends to be visible in
-            // the UI when there is congestion involving UI-related passing.
-            try {
-              const stats = JSON.parse(data);
-              resolve(stats);
-            } catch (e) {
-              reject(e);
-            }
-          } else {
-            reject(new Error(data));
-          }
-        });
-    });
+  getStats() {
+    return WebRTCModule.peerConnectionGetStats(this._peerConnectionId)
+      .then( data =>  {
+        /* On both Android and iOS it is faster to construct a single
+         JSON string representing the Map of StatsReports and have it
+         pass through the React Native bridge rather than the Map of
+         StatsReports. While the implementations do try to be faster in
+         general, the stress is on being faster to pass through the React
+         Native bridge which is a bottleneck that tends to be visible in
+         the UI when there is congestion involving UI-related passing.
+
+         TODO Implement the logic for filtering the stats based on
+         the sender/receiver
+         */
+        return new Map(JSON.parse(data));
+      });
   }
 
   getLocalStreams() {
@@ -247,7 +235,7 @@ export default class RTCPeerConnection extends EventTarget(PEER_CONNECTION_EVENT
   _getTrack(streamReactTag, trackId): MediaStreamTrack {
     const stream
       = this._remoteStreams.find(
-          stream => stream._reactTag === streamReactTag);
+      stream => stream._reactTag === streamReactTag);
 
     return stream && stream._tracks.find(track => track.id === trackId);
   }
@@ -361,9 +349,9 @@ export default class RTCPeerConnection extends EventTarget(PEER_CONNECTION_EVENT
         }
         const channel
           = new RTCDataChannel(
-              this._peerConnectionId,
-              evDataChannel.label,
-              evDataChannel);
+          this._peerConnectionId,
+          evDataChannel.label,
+          evDataChannel);
         // XXX webrtc::PeerConnection checked that id was not in use in its own
         // SID allocator before it invoked us. Additionally, its own SID
         // allocator is the authority on ResourceInUse. Consequently, it is
@@ -387,35 +375,35 @@ export default class RTCPeerConnection extends EventTarget(PEER_CONNECTION_EVENT
    * instance such as id
    */
   createDataChannel(label: string, dataChannelDict?: ?RTCDataChannelInit) {
-    let id;
-    const dataChannelIds = this._dataChannelIds;
-    if (dataChannelDict && 'id' in dataChannelDict) {
-      id = dataChannelDict.id;
-      if (typeof id !== 'number') {
-        throw new TypeError('DataChannel id must be a number: ' + id);
-      }
-      if (dataChannelIds.has(id)) {
-        throw new ResourceInUse('DataChannel id already in use: ' + id);
-      }
-    } else {
-      // Allocate a new id.
-      // TODO Remembering the last used/allocated id and then incrementing it to
-      // generate the next id to use will surely be faster. However, I want to
-      // reuse ids (in the future) as the RTCDataChannel.id space is limited to
-      // unsigned short by the standard:
-      // https://www.w3.org/TR/webrtc/#dom-datachannel-id. Additionally, 65535
-      // is reserved due to SCTP INIT and INIT-ACK chunks only allowing a
-      // maximum of 65535 streams to be negotiated (as defined by the WebRTC
-      // Data Channel Establishment Protocol).
-      for (id = 1; id < 65535 && dataChannelIds.has(id); ++id);
-      // TODO Throw an error if no unused id is available.
-      dataChannelDict = Object.assign({id}, dataChannelDict);
-    }
-    WebRTCModule.createDataChannel(
-        this._peerConnectionId,
-        label,
-        dataChannelDict);
-    dataChannelIds.add(id);
-    return new RTCDataChannel(this._peerConnectionId, label, dataChannelDict);
-  }
+  let id;
+  const dataChannelIds = this._dataChannelIds;
+  if (dataChannelDict && 'id' in dataChannelDict) {
+  id = dataChannelDict.id;
+  if (typeof id !== 'number') {
+  throw new TypeError('DataChannel id must be a number: ' + id);
+}
+if (dataChannelIds.has(id)) {
+  throw new ResourceInUse('DataChannel id already in use: ' + id);
+}
+} else {
+  // Allocate a new id.
+  // TODO Remembering the last used/allocated id and then incrementing it to
+  // generate the next id to use will surely be faster. However, I want to
+  // reuse ids (in the future) as the RTCDataChannel.id space is limited to
+  // unsigned short by the standard:
+  // https://www.w3.org/TR/webrtc/#dom-datachannel-id. Additionally, 65535
+  // is reserved due to SCTP INIT and INIT-ACK chunks only allowing a
+  // maximum of 65535 streams to be negotiated (as defined by the WebRTC
+  // Data Channel Establishment Protocol).
+  for (id = 1; id < 65535 && dataChannelIds.has(id); ++id);
+  // TODO Throw an error if no unused id is available.
+  dataChannelDict = Object.assign({id}, dataChannelDict);
+}
+WebRTCModule.createDataChannel(
+  this._peerConnectionId,
+  label,
+  dataChannelDict);
+dataChannelIds.add(id);
+return new RTCDataChannel(this._peerConnectionId, label, dataChannelDict);
+}
 }
